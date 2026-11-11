@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json.Nodes;
 using AI.Providers.Common;
 using AI.Providers.Configuration.Interfaces;
 using AI.Providers.Configuration.Providers;
@@ -39,35 +38,24 @@ namespace AI.Providers.Vectorizers.Implementation
 
 		public async Task<VectorizerResponse> GetEmbeddingAsync(VectorizerRequest request, CancellationToken cancellationToken = default)
 		{
+			ArgumentNullException.ThrowIfNull(request);
 			cancellationToken.ThrowIfCancellationRequested();
 
-			var accessToken = await authentificator.GetAccessTokenAsync(cancellationToken);
+			var input = request.GetInputs();
+			if (input.Length == 0)
+				return new VectorizerResponse();
 
-			request.Model = currentModel;
+			request.GetEncodingFormat();
+			var model = request.GetModel(currentModel);
+			var accessToken = await authentificator.GetAccessTokenAsync(cancellationToken);
 
 			using var httpRequest = new HttpRequestMessage(HttpMethod.Post, embeddingEndpoint)
 			{
-				Content = JsonContent.Create(request)
+				Content = JsonContent.Create(new { model, input })
 			};
 			httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 			using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				throw new Exception($"{(int)response.StatusCode} {response.StatusCode}");
-			}
-
-			var node = JsonNode.Parse(await response.Content.ReadAsStringAsync(cancellationToken))!;
-			var embeddings = node["data"]!
-				.AsArray()
-				.Select(item => item!["embedding"]!
-								.AsArray()
-								.Select(x => (float)x!.GetValue<double>())
-								.ToArray())
-				.ToArray();
-
-			cancellationToken.ThrowIfCancellationRequested();
-			return new VectorizerResponse { Embedding = embeddings };
+			return await EmbeddingResponseReader.ReadAsync(response, input.Length, cancellationToken);
 		}
 
 		// The caller retains ownership of an injected client.

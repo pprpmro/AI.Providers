@@ -26,7 +26,7 @@ public static class Defaults
 
 		public const string AccessTokenEndpoint = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 		public const string DialogEndpoint = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions";
-		public const string EmbeddingEndpoint = "https://gigachat.devices.sberbank.ru/api/v1/embeddings";
+		public const string EmbeddingEndpoint = "https://api.giga.chat/v1/embeddings";
 		public const string ModelsEndpoint = "https://api.giga.chat/v1/models";
 
 		public const string DialogModel = "GigaChat-2-Pro";

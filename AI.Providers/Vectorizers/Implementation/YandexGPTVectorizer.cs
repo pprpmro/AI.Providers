@@ -1,6 +1,5 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json.Nodes;
 using AI.Providers.Configuration.Interfaces;
 using AI.Providers.Configuration.Providers;
 using AI.Providers.Data.Vectorizers;
@@ -12,6 +11,7 @@ namespace AI.Providers.Vectorizers.Implementation
 	{
 		private string currentModelPath;
 		private readonly string embeddingEndpoint;
+		private readonly string catalogId;
 		private readonly HttpClient httpClient;
 		private readonly AuthenticationHeaderValue authorization;
 		private readonly bool ownsHttpClient;
@@ -22,6 +22,7 @@ namespace AI.Providers.Vectorizers.Implementation
 		public YandexGPTVectorizer(IConfigurationProvider cfg, HttpClient? client)
 		{
 			var apiKey = YandexGPTConfiguration.ApiKey(cfg);
+			catalogId = YandexGPTConfiguration.CatalogId(cfg);
 			httpClient = client ?? new HttpClient();
 			ownsHttpClient = client is null;
 			authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -31,40 +32,34 @@ namespace AI.Providers.Vectorizers.Implementation
 
 		public async Task<VectorizerResponse> GetEmbeddingAsync(VectorizerRequest request, CancellationToken cancellationToken = default)
 		{
+			ArgumentNullException.ThrowIfNull(request);
 			cancellationToken.ThrowIfCancellationRequested();
 
-			request.Model = currentModelPath;
+			var input = request.GetInputs();
+			if (input.Length == 0)
+				return new VectorizerResponse();
 
-			var embeddings = new List<float[]>();
-			// Yandex's OpenAI-compatible endpoint accepts one text per request.
-			foreach (var input in request.Input)
+			var model = request.GetModel(currentModelPath);
+			var encodingFormat = request.GetEncodingFormat();
+			var embeddings = new float[input.Length][];
+
+			// Yandex accepts one text per request.
+			for (var i = 0; i < input.Length; i++)
 			{
-				var payload = new
-				{
-					model = currentModelPath,
-					input,
-					encoding_format = string.IsNullOrEmpty(request.Encoding_format) ? "float" : request.Encoding_format
-				};
 				using var httpRequest = new HttpRequestMessage(HttpMethod.Post, embeddingEndpoint)
 				{
-					Content = JsonContent.Create(payload)
+					Content = JsonContent.Create(new { model, input = input[i], encoding_format = encodingFormat })
 				};
 				httpRequest.Headers.Authorization = authorization;
+				if (!string.IsNullOrWhiteSpace(catalogId))
+					httpRequest.Headers.Add("OpenAI-Project", catalogId);
+
 				using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
-
-				if (!response.IsSuccessStatusCode)
-					throw new Exception($"{(int)response.StatusCode} {response.StatusCode}");
-
-				var node = JsonNode.Parse(await response.Content.ReadAsStringAsync(cancellationToken))!;
-				var embedding = node["data"]![0]!["embedding"]!
-					.AsArray()
-					.Select(x => (float)x!.GetValue<double>())
-					.ToArray();
-				embeddings.Add(embedding);
+				var result = await EmbeddingResponseReader.ReadAsync(response, 1, cancellationToken);
+				embeddings[i] = result.Embedding[0];
 			}
 
-			cancellationToken.ThrowIfCancellationRequested();
-			return new VectorizerResponse { Embedding = embeddings.ToArray() };
+			return new VectorizerResponse { Embedding = embeddings };
 		}
 
 		public void Dispose()

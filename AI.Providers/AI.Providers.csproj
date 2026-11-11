@@ -4,6 +4,25 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+
+    <PackageId>AI.Providers</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>pprpmro</Authors>
+    <Description>A .NET library for multi-turn dialogs and streamed replies through adapters for OpenAI, GigaChat, YandexGPT, DeepSeek, and OpenAI-compatible APIs. Includes chat model discovery and text embeddings.</Description>
+    <PackageTags>ai;llm;chat;dialog;streaming;openai;gigachat;yandexgpt;deepseek;openai-compatible;embeddings</PackageTags>
+    <PackageProjectUrl>https://github.com/pprpmro/AI.Providers</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pprpmro/AI.Providers.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>Initial release with dialogs, streaming, provider adapters, chat model discovery, and text embeddings.</PackageReleaseNotes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
